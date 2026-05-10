@@ -5,105 +5,120 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 
-# Cấu hình giao diện rộng để chứa được nhiều thông tin
-st.set_page_config(page_title="Báo cáo Giữa kỳ - Phân tích Siêu thị", layout="wide")
+# Cấu hình Dashboard
+st.set_page_config(page_title="Superstore Sales Dashboard", layout="wide")
 
-# --- HÀM HỖ TRỢ ĐỌC DỮ LIỆU ---
+# --- HÀM LOAD DỮ LIỆU ---
 @st.cache_data
-def load_and_clean_data():
-    file_path = "SampleSuperstore.csv"
-    if not os.path.exists(file_path):
+def load_data():
+    file_name = "SampleSuperstore.csv"  # Đã đổi tên theo yêu cầu của bạn
+    if not os.path.exists(file_name):
         return None
     
-    df = pd.read_csv(file_path)
-    # Phần 1: Làm sạch dữ liệu
-    df.columns = df.columns.str.strip()
-    if 'Order Date' in df.columns:
-        df['Order Date'] = pd.to_datetime(df['Order Date'], errors='coerce')
+    # Đọc dữ liệu
+    df = pd.read_csv(file_name, encoding='windows-1252') # Thêm encoding phổ biến cho file này
     
-    # Xử lý missing values
-    for col in ['Sales', 'Profit']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            df[col] = df[col].fillna(df[col].median())
+    # PHẦN 1: LÀM SẠCH DỮ LIỆU
+    df.columns = df.columns.str.strip() # Xóa khoảng trắng tên cột
+    
+    # Chuyển đổi ngày tháng nếu có (Bộ Superstore thường có Order Date)
+    if 'Order Date' in df.columns:
+        df['Order Date'] = pd.to_datetime(df['Order Date'])
+    
+    # Xử lý dữ liệu thiếu/sai
+    df['Sales'] = pd.to_numeric(df['Sales'], errors='coerce').fillna(0)
+    df['Profit'] = pd.to_numeric(df['Profit'], errors='coerce').fillna(0)
+    
     return df
 
-df = load_and_clean_data()
+df = load_data()
 
-# --- NỘI DUNG CHÍNH ---
 if df is None:
-    st.error("❌ Không tìm thấy file dữ liệu. Vui lòng kiểm tra lại GitHub.")
+    st.error("❌ Không tìm thấy file 'SampleSuperstore.csv'. Vui lòng kiểm tra lại tên file trên GitHub!")
 else:
-    st.title("🚀 ĐỒ ÁN GIỮA KỲ: PHÂN TÍCH DỮ LIỆU SIÊU THỊ")
-    st.sidebar.markdown("### Thành viên nhóm:\n1. [Tên 1]\n2. [Tên 2]\n3. [Tên 3]")
+    # --- GIAO DIỆN DASHBOARD ---
+    st.title("🏬 SUPERSTORE ANALYTICS DASHBOARD")
+    st.markdown("### BÀI KIỂM TRA GIỮA KỲ - PHÂN TÍCH VÀ TRỰC QUAN HÓA")
 
-    # --- PHẦN 1: LÀM SẠCH VÀ HIỂU DỮ LIỆU (10%) ---
-    with st.expander("📂 PHẦN 1: LÀM SẠCH VÀ HIỂU DỮ LIỆU", expanded=True):
-        col_desc1, col_desc2 = st.columns(2)
-        with col_desc1:
-            st.write("**Mô tả dữ liệu:** Bộ dữ liệu gồm các giao dịch bán hàng, bao gồm thông tin khách hàng, sản phẩm và lợi nhuận.")
-            st.write(f"- Tổng số dòng: {df.shape[0]}")
-            st.write(f"- Các biến chính: `Order Date`, `Category`, `Region`, `Sales`, `Profit`, `Discount`.")
-        with col_desc2:
-            st.write("**Câu hỏi phân tích:**")
-            st.write("1. Xu hướng doanh thu thay đổi thế nào theo tháng?")
-            st.write("2. Vùng nào có lợi nhuận cao nhất?")
-            st.write("3. Mối quan hệ giữa giảm giá và lợi nhuận thực tế?")
+    # SIDEBAR TƯƠNG TÁC
+    st.sidebar.header("🕹️ Bộ lọc Dashboard")
+    region = st.sidebar.multiselect("Chọn Vùng (Region):", options=df["Region"].unique(), default=df["Region"].unique())
+    category = st.sidebar.multiselect("Chọn Danh mục (Category):", options=df["Category"].unique(), default=df["Category"].unique())
 
-    # --- PHẦN 2: BỘ BIỂU ĐỒ CƠ BẢN BẮT BUỘC (40%) ---
-    st.header("📊 PHẦN 2: BỘ BIỂU ĐỒ CƠ BẢN")
+    # Lọc dữ liệu
+    df_filtered = df[df["Region"].isin(region) & df["Category"].isin(category)]
+
+    # CHỈ SỐ TỔNG QUAN (KPIs)
+    col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
+    col_kpi1.metric("Tổng Doanh thu", f"${df_filtered['Sales'].sum():,.0f}")
+    col_kpi2.metric("Tổng Lợi nhuận", f"${df_filtered['Profit'].sum():,.0f}")
+    col_kpi3.metric("Số lượng đã bán", f"{df_filtered['Quantity'].sum():,.0f}")
+    col_kpi4.metric("Tỷ lệ lợi nhuận", f"{(df_filtered['Profit'].sum()/df_filtered['Sales'].sum()*100):.1f}%")
+
+    st.divider()
+
+    # --- PHẦN 2: 4 BIỂU ĐỒ CƠ BẢN BẮT BUỘC (40%) ---
+    st.header("1️⃣ BỘ BIỂU ĐỒ CƠ BẢN")
     
-    # 1. Line Graph & 2. Pie Chart
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("1. Line Graph: Xu hướng Doanh thu")
-        line_df = df.copy()
-        line_df['Month'] = line_df['Order Date'].dt.to_period('M').astype(str)
-        line_data = line_df.groupby('Month')['Sales'].sum().reset_index()
-        fig1 = px.line(line_data, x='Month', y='Sales', markers=True)
+    row1_1, row1_2 = st.columns(2)
+    with row1_1:
+        st.subheader("Line Graph: Doanh thu theo Bang (State)")
+        state_sales = df_filtered.groupby("State")["Sales"].sum().reset_index().sort_values("Sales", ascending=False).head(10)
+        fig1 = px.line(state_sales, x="State", y="Sales", markers=True, title="Top 10 Bang có doanh thu cao nhất")
         st.plotly_chart(fig1, use_container_width=True)
-        st.info("**Insight:** Doanh thu tăng trưởng mạnh vào các tháng cuối năm. \n\n **Hạn chế:** Chưa thể hiện được nguyên nhân cụ thể gây biến động.")
+        st.info("**Insight:** California và New York là thị trường trọng điểm. **Hạn chế:** Chỉ xem được top đầu, chưa thấy được sự phân bổ toàn quốc.")
 
-    with col2:
-        st.subheader("2. Pie Chart: Tỷ trọng theo Phân khúc")
-        fig2 = px.pie(df, values='Sales', names='Segment', hole=0.3)
+    with row1_2:
+        st.subheader("Pie Chart: Tỷ trọng Doanh thu theo Phân khúc")
+        fig2 = px.pie(df_filtered, values='Sales', names='Segment', title="Cơ cấu khách hàng", hole=0.4)
         st.plotly_chart(fig2, use_container_width=True)
-        st.info("**Insight:** Khách hàng cá nhân (Consumer) chiếm ưu thế tuyệt đối. \n\n **Hạn chế:** Khó so sánh nếu các phần có tỷ lệ gần bằng nhau.")
+        st.info("**Insight:** Phân khúc Consumer chiếm hơn 50%. **Hạn chế:** Không thể hiện được giá trị lợi nhuận đi kèm.")
 
-    # 3. Stacked Bar & 4. Scatter Plot
-    col3, col4 = st.columns(2)
-    with col3:
-        st.subheader("3. Stacked Bar: Doanh thu theo Vùng & Ngành hàng")
-        fig3 = px.bar(df, x='Region', y='Sales', color='Category')
+    row2_1, row2_2 = st.columns(2)
+    with row2_1:
+        st.subheader("Stacked Bar: Doanh thu theo Vùng & Ngành hàng")
+        fig3 = px.bar(df_filtered, x='Region', y='Sales', color='Category', title="Doanh thu chồng")
         st.plotly_chart(fig3, use_container_width=True)
-        st.info("**Insight:** Vùng West dẫn đầu doanh thu ở mọi ngành hàng. \n\n **Hạn chế:** Khó xác định giá trị chính xác của các cột ở giữa.")
+        st.info("**Insight:** Technology đóng góp giá trị cao nhất tại phía Tây. **Hạn chế:** Khó so sánh chính xác các phần ở giữa cột.")
 
-    with col4:
-        st.subheader("4. Scatter Plot: Sales vs Profit")
-        fig4 = px.scatter(df, x='Sales', y='Profit', color='Discount', size='Quantity')
+    with row2_2:
+        st.subheader("Scatter Plot: Sales vs Profit")
+        fig4 = px.scatter(df_filtered, x='Sales', y='Profit', color='Category', size='Discount', hover_data=['Sub-Category'])
         st.plotly_chart(fig4, use_container_width=True)
-        st.info("**Insight:** Đơn hàng giảm giá cao (>20%) thường dẫn đến lỗ vốn. \n\n **Hạn chế:** Các điểm dữ liệu quá dày gây khó nhìn.")
+        st.info("**Insight:** Nhiều đơn hàng doanh thu cao nhưng lỗ do Discount quá lớn. **Hạn chế:** Dữ liệu bị chồng lấp tại các điểm giá trị thấp.")
 
-    # --- PHẦN 3 & 4: NÂNG CAO (40%) ---
-    st.markdown("---")
-    st.header("🌟 PHẦN 3 & 4: TRỰC QUAN HÓA NÂNG CAO")
+    st.divider()
+
+    # --- PHẦN 3 & 4: PHƯƠNG ÁN NÂNG CAO (40%) ---
+    st.header("2️⃣ TRỰC QUAN HÓA NÂNG CAO")
     
-    st.subheader("Đề xuất 2 phương án nâng cao:")
-    st.write("- **Phương án 1: Heatmap** (Để soi lợi nhuận theo vùng và danh mục).")
-    st.write("- **Phương án 2: Treemap** (Để xem phân cấp sản phẩm).")
+    tab_adv1, tab_adv2 = st.tabs(["Heatmap (Đề xuất)", "Treemap (Triển khai & Đánh giá)"])
 
-    # Triển khai phương án nâng cao chọn lọc (Phần 4)
-    st.subheader("Thiết kế chi tiết Phương án: Treemap")
-    fig_tree = px.treemap(df, path=[px.Constant("Siêu thị"), 'Category', 'Sub-Category'], 
-                          values='Sales', color='Profit', color_continuous_scale='RdYlGn')
-    st.plotly_chart(fig_tree, use_container_width=True)
-    
-    # Giải thích thiết kế theo yêu cầu Phần 4
-    with st.expander("🎨 Giải thích thiết kế & Đánh giá (Phần 4)"):
-        st.write("- **Bố cục:** Sử dụng sơ đồ cây để thể hiện cấu trúc phân cấp.")
-        st.write("- **Màu sắc:** Thang màu Đỏ-Xanh (Diverging) để phân biệt lỗ/lãi.")
-        st.write("- **Tương tác:** Cho phép click vào từng ô để xem chi tiết danh mục con.")
-        st.write("- **So sánh:** Hiệu quả hơn biểu đồ cơ bản vì hiển thị được 3 chiều dữ liệu (Phân cấp, Doanh thu, Lợi nhuận) cùng lúc.")
+    with tab_adv1:
+        st.subheader("Heatmap: Lợi nhuận trung bình theo Sub-Category & Region")
+        pivot_heat = df_filtered.pivot_table(index='Sub-Category', columns='Region', values='Profit', aggfunc='mean')
+        fig_h, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(pivot_heat, annot=True, cmap="RdYlGn", fmt=".1f", ax=ax)
+        st.pyplot(fig_h)
+        st.write("**Câu hỏi phân tích:** Những mặt hàng nào đang gây lỗ ở vùng cụ thể?")
+        st.write("**Ưu điểm:** Nhận diện vùng đỏ (lỗ) ngay lập tức mà biểu đồ cột không làm được.")
 
-    # --- PHẦN 5: THUYẾT TRÌNH ---
-    st.sidebar.success("✅ App đã sẵn sàng cho buổi thuyết trình 10 phút!")
+    with tab_adv2:
+        st.subheader("Treemap: Phân cấp Cơ cấu Doanh thu & Lợi nhuận")
+        # Đây là phương án chọn để thiết kế chi tiết (Phần 4)
+        fig_tree = px.treemap(df_filtered, path=['Category', 'Sub-Category'], values='Sales', 
+                              color='Profit', color_continuous_scale='RdYlGn',
+                              title="Toàn cảnh Sản phẩm: Kích cỡ = Doanh thu, Màu sắc = Lợi nhuận")
+        st.plotly_chart(fig_tree, use_container_width=True)
+        
+        # Phần đánh giá thiết kế
+        st.success("""
+        **Phân tích Quyết định Thiết kế (Phần 4):**
+        - **Bố cục:** Sử dụng diện tích để thể hiện quy mô doanh thu, giúp so sánh nhanh các ngành hàng.
+        - **Màu sắc:** Thang màu xanh (lãi) - đỏ (lỗ) giúp quản lý tập trung vào các nhóm sản phẩm yếu kém (như Tables).
+        - **Tương tác:** Cho phép người dùng click vào từng Category để xem chi tiết bên trong.
+        - **Đánh giá:** So với biểu đồ cơ bản, Treemap hiển thị được 3 chiều dữ liệu đồng thời, giúp tiết kiệm không gian Dashboard.
+        """)
+
+    st.sidebar.markdown("---")
+    st.sidebar.info("Phần 5: Sẵn sàng thuyết trình trong 10 phút.")
