@@ -32,7 +32,7 @@ if df is None:
 else:
     # --- GIAO DIỆN DASHBOARD ---
     st.title("🏬 SUPERSTORE BUSINESS DASHBOARD")
-    st.markdown("### Đồ án Giữa kỳ: Phân tích & Trực quan hóa dữ liệu")
+    st.markdown("### Kiểm tra giữa kỳ: Phân tích & Trực quan hóa dữ liệu")
 
     # SIDEBAR: DASHBOARD TƯƠNG TÁC (PHẦN 4)
     st.sidebar.header("🕹️ Bộ lọc tương tác")
