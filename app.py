@@ -11,7 +11,7 @@ st.set_page_config(page_title="Báo cáo Giữa kỳ - Phân tích Siêu thị",
 # --- HÀM HỖ TRỢ ĐỌC DỮ LIỆU ---
 @st.cache_data
 def load_and_clean_data():
-    file_path = "supermarket_data.csv"
+    file_path = "SampleSuperstore.csv"
     if not os.path.exists(file_path):
         return None
     
