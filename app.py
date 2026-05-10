@@ -104,12 +104,34 @@ else:
         st.write("**Ưu điểm:** Nhận diện vùng đỏ (lỗ) ngay lập tức mà biểu đồ cột không làm được.")
 
     with tab_adv2:
-        st.subheader("Treemap: Phân cấp Cơ cấu Doanh thu & Lợi nhuận")
-        # Đây là phương án chọn để thiết kế chi tiết (Phần 4)
-        fig_tree = px.treemap(df_filtered, path=['Category', 'Sub-Category'], values='Sales', 
-                              color='Profit', color_continuous_scale='RdYlGn',
-                              title="Toàn cảnh Sản phẩm: Kích cỡ = Doanh thu, Màu sắc = Lợi nhuận")
-        st.plotly_chart(fig_tree, use_container_width=True)
+    st.subheader("Treemap: Phân cấp Cơ cấu Doanh thu & Lợi nhuận")
+    
+    # SỬA ĐỔI: Sử dụng maxdepth để tránh hiển thị quá nhiều chữ cùng lúc
+    fig_tree = px.treemap(
+        df_filtered, 
+        path=[px.Constant("Tất cả"), 'Category', 'Sub-Category'], # Thêm gốc để dễ nhìn
+        values='Sales', 
+        color='Profit', 
+        color_continuous_scale='RdYlGn',
+        title="Toàn cảnh Sản phẩm: Kích cỡ = Doanh thu, Màu sắc = Lợi nhuận"
+    )
+
+    # TỐI ƯU HIỂN THỊ CHỮ (LAYOUT)
+    fig_tree.update_traces(
+        textinfo="label+value",             # Chỉ hiện tên và giá trị (giảm tải chữ)
+        hoverinfo="label+value+percent parent",
+        textfont_size=14,                   # Tăng kích thước font chữ cơ bản
+        insidetextfont_size=12,             # Tăng kích thước font chữ bên trong ô
+        texttemplate="%{label}<br>$%{value:,.0f}" # Định dạng chữ hiển thị rõ ràng hơn
+    )
+
+    # CẤU HÌNH ĐỂ CHỮ TỰ ĐỘNG CĂN CHỈNH TỐT HƠN
+    fig_tree.update_layout(
+        margin=dict(t=50, l=25, r=25, b=25), # Nới rộng lề
+        font=dict(size=14)
+    )
+
+    st.plotly_chart(fig_tree, use_container_width=True)
         
         # Phần đánh giá thiết kế
         st.success("""
