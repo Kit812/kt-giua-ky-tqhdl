@@ -5,128 +5,105 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 
-# --- CẤU HÌNH TRANG ---
-st.set_page_config(page_title="Supermarket Analysis Dashboard", layout="wide")
+# Cấu hình giao diện rộng để chứa được nhiều thông tin
+st.set_page_config(page_title="Báo cáo Giữa kỳ - Phân tích Siêu thị", layout="wide")
 
-# --- HÀM ĐỌC DỮ LIỆU (Tối ưu tránh lỗi FileNotFoundError) ---
+# --- HÀM HỖ TRỢ ĐỌC DỮ LIỆU ---
 @st.cache_data
-def load_data():
-    # Danh sách các tên file có khả năng xảy ra (phòng trường hợp viết hoa/thường)
-    possible_names = ["SampleSuperstore.csv", "Supermarket_Data.csv", "supermarket_data.CSV"]
-    df = None
-    
-    for name in possible_names:
-        if os.path.exists(name):
-            df = pd.read_csv(name)
-            break
-            
-    if df is None:
+def load_and_clean_data():
+    file_path = "supermarket_data.csv"
+    if not os.path.exists(file_path):
         return None
-
-    # LÀM SẠCH DỮ LIỆU (Phần 1)
-    if 'Order Date' in df.columns:
-        df['Order Date'] = pd.to_datetime(df['Order Date'])
     
-    # Xử lý dữ liệu thiếu: Điền giá trị trung vị cho Sales và Profit
-    if 'Sales' in df.columns:
-        df['Sales'] = df['Sales'].fillna(df['Sales'].median())
-    if 'Profit' in df.columns:
-        df['Profit'] = df['Profit'].fillna(df['Profit'].median())
-        
+    df = pd.read_csv(file_path)
+    # Phần 1: Làm sạch dữ liệu
+    df.columns = df.columns.str.strip()
+    if 'Order Date' in df.columns:
+        df['Order Date'] = pd.to_datetime(df['Order Date'], errors='coerce')
+    
+    # Xử lý missing values
+    for col in ['Sales', 'Profit']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            df[col] = df[col].fillna(df[col].median())
     return df
 
-# Chạy hàm load dữ liệu
-df = load_data()
+df = load_and_clean_data()
 
-# --- GIAO DIỆN CHÍNH ---
+# --- NỘI DUNG CHÍNH ---
 if df is None:
-    st.error("❌ KHÔNG TÌM THẤY FILE DỮ LIỆU!")
-    st.markdown("""
-    **Cách sửa lỗi:**
-    1. Kiểm tra file trên GitHub có đúng tên là `supermarket_data.csv` không.
-    2. Đảm bảo file nằm cùng thư mục với file `app.py` (không nằm trong folder con).
-    """)
+    st.error("❌ Không tìm thấy file dữ liệu. Vui lòng kiểm tra lại GitHub.")
 else:
-    # --- SIDEBAR (PHẦN TƯƠNG TÁC) ---
-    st.sidebar.header("🔍 Bộ lọc dữ liệu")
-    region = st.sidebar.multiselect("Chọn Vùng (Region):", options=df["Region"].unique(), default=df["Region"].unique())
-    segment = st.sidebar.multiselect("Chọn Phân khúc (Segment):", options=df["Segment"].unique(), default=df["Segment"].unique())
+    st.title("🚀 ĐỒ ÁN GIỮA KỲ: PHÂN TÍCH DỮ LIỆU SIÊU THỊ")
+    st.sidebar.markdown("### Thành viên nhóm:\n1. [Tên 1]\n2. [Tên 2]\n3. [Tên 3]")
 
-    # Lọc dữ liệu theo lựa chọn
-    mask = df["Region"].isin(region) & df["Segment"].isin(segment)
-    df_sub = df[mask]
+    # --- PHẦN 1: LÀM SẠCH VÀ HIỂU DỮ LIỆU (10%) ---
+    with st.expander("📂 PHẦN 1: LÀM SẠCH VÀ HIỂU DỮ LIỆU", expanded=True):
+        col_desc1, col_desc2 = st.columns(2)
+        with col_desc1:
+            st.write("**Mô tả dữ liệu:** Bộ dữ liệu gồm các giao dịch bán hàng, bao gồm thông tin khách hàng, sản phẩm và lợi nhuận.")
+            st.write(f"- Tổng số dòng: {df.shape[0]}")
+            st.write(f"- Các biến chính: `Order Date`, `Category`, `Region`, `Sales`, `Profit`, `Discount`.")
+        with col_desc2:
+            st.write("**Câu hỏi phân tích:**")
+            st.write("1. Xu hướng doanh thu thay đổi thế nào theo tháng?")
+            st.write("2. Vùng nào có lợi nhuận cao nhất?")
+            st.write("3. Mối quan hệ giữa giảm giá và lợi nhuận thực tế?")
 
-    # --- TIÊU ĐỀ BÀI GIỮA KỲ ---
-    st.title("📊 Báo cáo Phân tích Siêu thị")
-    st.info("Bài kiểm tra giữa kỳ - Nhóm thực hiện: [Tên nhóm của bạn]")
-
-    # Chỉ số chính (KPIs)
-    kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Tổng Doanh thu", f"${df_sub['Sales'].sum():,.0f}")
-    kpi2.metric("Tổng Lợi nhuận", f"${df_sub['Profit'].sum():,.0f}")
-    kpi3.metric("Số đơn hàng", len(df_sub))
-
-    st.divider()
-
-    # --- PHẦN 2: BIỂU ĐỒ CƠ BẢN (40%) ---
-    st.header("I. Bộ biểu đồ cơ bản")
+    # --- PHẦN 2: BỘ BIỂU ĐỒ CƠ BẢN BẮT BUỘC (40%) ---
+    st.header("📊 PHẦN 2: BỘ BIỂU ĐỒ CƠ BẢN")
     
-    c1, c2 = st.columns(2)
-
-    with c1:
-        # 1. Line Graph
-        st.subheader("1. Xu hướng doanh thu")
-        line_df = df_sub.groupby(df_sub['Order Date'].dt.to_period('M'))['Sales'].sum().reset_index()
-        line_df['Order Date'] = line_df['Order Date'].astype(str)
-        fig1 = px.line(line_df, x='Order Date', y='Sales', title="Doanh thu theo tháng", markers=True)
+    # 1. Line Graph & 2. Pie Chart
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("1. Line Graph: Xu hướng Doanh thu")
+        line_df = df.copy()
+        line_df['Month'] = line_df['Order Date'].dt.to_period('M').astype(str)
+        line_data = line_df.groupby('Month')['Sales'].sum().reset_index()
+        fig1 = px.line(line_data, x='Month', y='Sales', markers=True)
         st.plotly_chart(fig1, use_container_width=True)
-        st.caption("**Insight:** Doanh thu biến động theo mùa. **Hạn chế:** Chưa lọc được theo từng ngày cụ thể.")
+        st.info("**Insight:** Doanh thu tăng trưởng mạnh vào các tháng cuối năm. \n\n **Hạn chế:** Chưa thể hiện được nguyên nhân cụ thể gây biến động.")
 
-        # 2. Pie Chart
-        st.subheader("2. Tỷ trọng doanh thu theo Category")
-        fig2 = px.pie(df_sub, values='Sales', names='Category', hole=0.4, title="Cơ cấu ngành hàng")
+    with col2:
+        st.subheader("2. Pie Chart: Tỷ trọng theo Phân khúc")
+        fig2 = px.pie(df, values='Sales', names='Segment', hole=0.3)
         st.plotly_chart(fig2, use_container_width=True)
-        st.caption("**Insight:** Office Supplies thường chiếm số lượng đơn cao nhất. **Hạn chế:** Khó nhìn nếu có quá nhiều nhóm.")
+        st.info("**Insight:** Khách hàng cá nhân (Consumer) chiếm ưu thế tuyệt đối. \n\n **Hạn chế:** Khó so sánh nếu các phần có tỷ lệ gần bằng nhau.")
 
-    with c2:
-        # 3. Stacked Bar Chart
-        st.subheader("3. Lợi nhuận theo Vùng & Phân khúc")
-        fig3 = px.bar(df_sub, x='Region', y='Profit', color='Segment', title="Lợi nhuận theo vùng (Chồng)")
+    # 3. Stacked Bar & 4. Scatter Plot
+    col3, col4 = st.columns(2)
+    with col3:
+        st.subheader("3. Stacked Bar: Doanh thu theo Vùng & Ngành hàng")
+        fig3 = px.bar(df, x='Region', y='Sales', color='Category')
         st.plotly_chart(fig3, use_container_width=True)
-        st.caption("**Insight:** Vùng West đóng góp lợi nhuận ổn định nhất. **Hạn chế:** Các cột chồng khó so sánh giá trị lẻ.")
+        st.info("**Insight:** Vùng West dẫn đầu doanh thu ở mọi ngành hàng. \n\n **Hạn chế:** Khó xác định giá trị chính xác của các cột ở giữa.")
 
-        # 4. Scatter Plot
-        st.subheader("4. Tương quan Sales & Profit")
-        fig4 = px.scatter(df_sub, x='Sales', y='Profit', color='Category', size='Quantity', title="Sales vs Profit")
+    with col4:
+        st.subheader("4. Scatter Plot: Sales vs Profit")
+        fig4 = px.scatter(df, x='Sales', y='Profit', color='Discount', size='Quantity')
         st.plotly_chart(fig4, use_container_width=True)
-        st.caption("**Insight:** Đơn hàng lớn không phải lúc nào cũng lãi cao. **Hạn chế:** Dữ liệu quá dày gây rối mắt.")
-
-    st.divider()
+        st.info("**Insight:** Đơn hàng giảm giá cao (>20%) thường dẫn đến lỗ vốn. \n\n **Hạn chế:** Các điểm dữ liệu quá dày gây khó nhìn.")
 
     # --- PHẦN 3 & 4: NÂNG CAO (40%) ---
-    st.header("II. Giải pháp trực quan hóa nâng cao")
+    st.markdown("---")
+    st.header("🌟 PHẦN 3 & 4: TRỰC QUAN HÓA NÂNG CAO")
     
-    tab1, tab2 = st.tabs(["Phương án 1: Heatmap", "Phương án 2: Treemap (Lựa chọn)"])
+    st.subheader("Đề xuất 2 phương án nâng cao:")
+    st.write("- **Phương án 1: Heatmap** (Để soi lợi nhuận theo vùng và danh mục).")
+    st.write("- **Phương án 2: Treemap** (Để xem phân cấp sản phẩm).")
 
-    with tab1:
-        st.subheader("Heatmap: Hiệu quả lợi nhuận trung bình")
-        pivot_heat = df_sub.pivot_table(index='Category', columns='Region', values='Profit', aggfunc='mean')
-        fig_h, ax = plt.subplots()
-        sns.heatmap(pivot_heat, annot=True, cmap="YlGnBu", ax=ax)
-        st.pyplot(fig_h)
-        st.write("**Lý do:** Giúp soi chiếu nhanh vùng nào đang kinh doanh lỗ/lãi theo loại hàng.")
+    # Triển khai phương án nâng cao chọn lọc (Phần 4)
+    st.subheader("Thiết kế chi tiết Phương án: Treemap")
+    fig_tree = px.treemap(df, path=[px.Constant("Siêu thị"), 'Category', 'Sub-Category'], 
+                          values='Sales', color='Profit', color_continuous_scale='RdYlGn')
+    st.plotly_chart(fig_tree, use_container_width=True)
+    
+    # Giải thích thiết kế theo yêu cầu Phần 4
+    with st.expander("🎨 Giải thích thiết kế & Đánh giá (Phần 4)"):
+        st.write("- **Bố cục:** Sử dụng sơ đồ cây để thể hiện cấu trúc phân cấp.")
+        st.write("- **Màu sắc:** Thang màu Đỏ-Xanh (Diverging) để phân biệt lỗ/lãi.")
+        st.write("- **Tương tác:** Cho phép click vào từng ô để xem chi tiết danh mục con.")
+        st.write("- **So sánh:** Hiệu quả hơn biểu đồ cơ bản vì hiển thị được 3 chiều dữ liệu (Phân cấp, Doanh thu, Lợi nhuận) cùng lúc.")
 
-    with tab2:
-        st.subheader("Treemap: Phân cấp doanh thu chi tiết")
-        fig_tree = px.treemap(df_sub, path=['Category', 'Sub-Category'], values='Sales',
-                              color='Profit', color_continuous_scale='RdYlGn')
-        st.plotly_chart(fig_tree, use_container_width=True)
-        
-        st.success("""
-        **Đánh giá thiết kế (Phần 4):**
-        - **Bố cục:** Tận dụng diện tích màn hình để so sánh quy mô (size) và hiệu quả (màu sắc).
-        - **Màu sắc:** Thang Đỏ-Xanh giúp nhận diện nhanh mặt hàng thua lỗ (màu đỏ).
-        - **Tương tác:** Cho phép nhấn vào từng nhóm để xem chi tiết bên trong (Drill-down).
-        """)
-
-    st.balloons()
+    # --- PHẦN 5: THUYẾT TRÌNH ---
+    st.sidebar.success("✅ App đã sẵn sàng cho buổi thuyết trình 10 phút!")
