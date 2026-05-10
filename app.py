@@ -12,7 +12,7 @@ st.set_page_config(page_title="Supermarket Analysis Dashboard", layout="wide")
 @st.cache_data
 def load_data():
     # Kiểm tra file có tồn tại không để tránh lỗi FileNotFoundError
-    file_name = "supermarket_data.csv"
+    file_name = "SampleSuperstore.csv"
     if not os.path.exists(file_name):
         st.error(f"Không tìm thấy file {file_name}. Hãy đảm bảo bạn đã upload file lên GitHub cùng thư mục với app.py")
         return None
