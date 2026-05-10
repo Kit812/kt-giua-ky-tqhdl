@@ -131,4 +131,3 @@ else:
         """)
 
     st.sidebar.markdown("---")
-    st.sidebar.info("Phần 5: Sẵn sàng thuyết trình.")
