@@ -119,21 +119,25 @@ else:
 
     with t2:
         st.subheader("Biểu đồ Treemap: Cơ cấu Doanh thu & Lợi nhuận")
-        # SỬA LỖI MÀU SẮC: Thiết lập midpoint=0 để phân biệt rõ Ranh giới Lãi/Lỗ [cite: 54, 55]
+        
+        # SỬA LỖI: Gom nhóm dữ liệu trước khi vẽ để đảm bảo tính TOÀN BỘ lợi nhuận của Sub-Category
+        df_tree_data = df_filtered.groupby(['Category', 'Sub-Category'])[['Sales', 'Profit']].sum().reset_index()
+        
         fig_tree = px.treemap(
-            df_filtered, 
-            path=[px.Constant("Tất cả Sản phẩm"), 'Category', 'Sub-Category'], 
+            df_tree_data, 
+            path=['Category', 'Sub-Category'], 
             values='Sales', 
             color='Profit', 
             color_continuous_scale='RdYlGn',
-            color_continuous_midpoint=0 # Chặn lỗi "nhuộm đỏ" các nhóm có lãi ít [cite: 55]
+            # ĐIỂM QUAN TRỌNG NHẤT:
+            color_continuous_midpoint=0 
         )
         
         fig_tree.update_traces(
             textinfo="label+value",
-            texttemplate="%{label}<br>Doanh thu: $%{value:,.0f}",
-            hovertemplate='<b>%{label}</b><br>Doanh thu: $%{value:,.0f}<br>Lợi nhuận: $%{color:,.0f}'
+            texttemplate="<b>%{label}</b><br>Doanh thu: $%{value:,.0f}",
+            hovertemplate='<b>%{label}</b><br>Tổng Doanh thu: $%{value:,.0f}<br>Tổng Lợi nhuận: $%{color:,.0f}'
         )
         
         st.plotly_chart(fig_tree, use_container_width=True)
-        st.info("💡 **Giải thích:** Màu đỏ chỉ xuất hiện khi giá trị lợi nhuận âm. Các nhóm như Appliances nếu có lãi sẽ không bị âm màu đỏ.")
+        st.info("💡 **Ghi chú:** Màu đỏ hiện nay chỉ đại diện cho các mặt hàng thực sự âm vốn (Lợi nhuận < 0).")
